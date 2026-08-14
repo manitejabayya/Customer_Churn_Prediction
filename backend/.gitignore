@@ -2,4 +2,5 @@
 .env.example
 churn_ai
 __pycache__
-.venv
+POSTMAN_TESTING_GUIDE.md
+test_customers.csv
