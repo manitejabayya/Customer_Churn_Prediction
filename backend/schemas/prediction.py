@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from pydantic import BaseModel
 
@@ -20,6 +20,8 @@ class PredictionResponse(BaseModel):
     customer_id: str
     churn_probability: float
     churn_label: str
+    churn_reason: Optional[str] = None
+    recommendations: Optional[List[str]] = None
 
 
 class PredictionHistoryItem(BaseModel):
@@ -36,6 +38,7 @@ class PredictionHistoryItem(BaseModel):
 class BulkUploadResponse(BaseModel):
     total_records: int
     results: List[PredictionResponse]
+    overview: Optional[Dict[str, Any]] = None
 
 
 class ReportSummary(BaseModel):
@@ -43,3 +46,23 @@ class ReportSummary(BaseModel):
     churn_count: int
     no_churn_count: int
     average_churn_probability: float
+
+
+class OverviewData(BaseModel):
+    total_customers: int
+    churn_risk: Dict[str, int]  # high, medium, low
+    churn_by_contract: Dict[str, int]
+    churn_by_internet_service: Dict[str, int]
+    churn_by_payment_method: Dict[str, int]
+    average_tenure_churn: float
+    average_tenure_no_churn: float
+    monthly_charges_distribution: Dict[str, float]
+
+
+class CustomerAnalysis(BaseModel):
+    customer_id: str
+    original_data: Dict[str, Any]
+    churn_probability: float
+    churn_label: str
+    churn_reason: str
+    recommendations: List[str]

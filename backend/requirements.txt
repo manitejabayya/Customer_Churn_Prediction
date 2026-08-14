@@ -9,4 +9,5 @@ passlib[bcrypt]
 pandas
 joblib
 scikit-learn
+xgboost
 python-multipart
