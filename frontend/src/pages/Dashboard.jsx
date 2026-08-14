@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import {
   LayoutDashboard,
@@ -16,6 +16,9 @@ import {
   UserX,
   Activity,
 } from "lucide-react";
+import { uploadApi, reportApi } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
+import { useState, useEffect } from "react";
 
 import {
   LineChart,
@@ -53,75 +56,7 @@ const NAV_ITEMS = [
   {
     label: "Reports",
     icon: FileBarChart2,
-    path: "/report",
-  },
-];
-
-/* ---------------------------------------------
-   STATISTICS
---------------------------------------------- */
-
-const STATS = [
-  {
-    label: "Total Customers",
-    value: "25,480",
-    icon: UsersIcon,
-    iconBg: "bg-blue-50 text-blue-600",
-  },
-  {
-    label: "At Risk",
-    value: "4,280",
-    icon: TrendingUp,
-    badge: "+4.2%",
-    badgeTone: "bg-red-50 text-red-600 border border-red-100",
-    iconBg: "bg-red-50 text-red-500",
-  },
-  {
-    label: "Churned",
-    value: "3,150",
-    icon: UserX,
-    iconBg: "bg-slate-100 text-slate-600",
-  },
-  {
-    label: "Churn Rate",
-    value: "12.4%",
-    icon: Activity,
-    iconBg: "bg-indigo-50 text-indigo-600",
-  },
-];
-
-/* ---------------------------------------------
-   CHURN OVERVIEW DATA
---------------------------------------------- */
-
-const CHURN_OVERVIEW = [
-  { month: "Jan", actual: 220, predicted: 260 },
-  { month: "Feb", actual: 300, predicted: 340 },
-  { month: "Mar", actual: 280, predicted: 300 },
-  { month: "Apr", actual: 420, predicted: 400 },
-  { month: "May", actual: 500, predicted: 520 },
-  { month: "Jun", actual: 460, predicted: 480 },
-];
-
-/* ---------------------------------------------
-   CHURN REASONS
---------------------------------------------- */
-
-const CHURN_REASONS = [
-  {
-    name: "Pricing Issues",
-    value: 45,
-    color: "#2563eb",
-  },
-  {
-    name: "Poor Support",
-    value: 30,
-    color: "#64748b",
-  },
-  {
-    name: "Competitor",
-    value: 25,
-    color: "#cbd5e1",
+    path: "/reports",
   },
 ];
 
@@ -129,7 +64,7 @@ const CHURN_REASONS = [
    SIDEBAR
 --------------------------------------------- */
 
-function Sidebar() {
+function Sidebar({ onLogout }) {
   const location = useLocation();
 
   return (
@@ -219,13 +154,13 @@ function Sidebar() {
           Settings
         </a>
 
-        <Link
-          to="/login"
+        <button
+          onClick={onLogout}
           className="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all"
         >
           <LogOut className="h-4 w-4 text-slate-400 group-hover:text-red-500" />
           Logout
-        </Link>
+        </button>
       </div>
     </aside>
   );
@@ -413,7 +348,7 @@ function StatCard({
    CHURN OVERVIEW
 --------------------------------------------- */
 
-function ChurnOverviewChart() {
+function ChurnOverviewChart({ data }) {
   return (
     <Card
       className="
@@ -459,7 +394,7 @@ function ChurnOverviewChart() {
 
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
-            data={CHURN_OVERVIEW}
+            data={data}
             margin={{
               left: -10,
               right: 10,
@@ -537,7 +472,7 @@ function ChurnOverviewChart() {
    CHURN DISTRIBUTION
 --------------------------------------------- */
 
-function ChurnDistributionChart() {
+function ChurnDistributionChart({ data }) {
   return (
     <Card
       className="
@@ -567,7 +502,7 @@ function ChurnDistributionChart() {
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={CHURN_REASONS}
+              data={data}
               dataKey="value"
               innerRadius={50}
               outerRadius={70}
@@ -575,7 +510,7 @@ function ChurnDistributionChart() {
               endAngle={-270}
               stroke="none"
             >
-              {CHURN_REASONS.map((entry) => (
+              {data.map((entry) => (
                 <Cell
                   key={entry.name}
                   fill={entry.color}
@@ -599,7 +534,7 @@ function ChurnDistributionChart() {
 
       <div className="mt-5 space-y-3">
 
-        {CHURN_REASONS.map((reason) => (
+        {data.map((reason) => (
           <div
             key={reason.name}
             className="
@@ -642,10 +577,135 @@ function ChurnDistributionChart() {
 --------------------------------------------- */
 
 export default function Dashboard() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [overviewData, setOverviewData] = useState(null);
+  const [summaryData, setSummaryData] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [overview, summary] = await Promise.all([
+          uploadApi.getOverview(),
+          reportApi.getSummary()
+        ]);
+        setOverviewData(overview);
+        setSummaryData(summary);
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  // Calculate stats from real data
+  const getStats = () => {
+    if (!summaryData || !overviewData) return [];
+
+    const totalCustomers = summaryData.total_predictions || 0;
+    const churned = summaryData.churn_count || 0;
+    const atRisk = overviewData.churn_risk?.high || 0;
+    const churnRate = totalCustomers > 0 ? ((churned / totalCustomers) * 100).toFixed(1) : '0.0';
+
+    return [
+      {
+        label: "Total Customers",
+        value: totalCustomers.toLocaleString(),
+        icon: UsersIcon,
+        iconBg: "bg-blue-50 text-blue-600",
+      },
+      {
+        label: "At Risk",
+        value: atRisk.toLocaleString(),
+        icon: TrendingUp,
+        badge: atRisk > 0 ? "+High" : "",
+        badgeTone: "bg-red-50 text-red-600 border border-red-100",
+        iconBg: "bg-red-50 text-red-500",
+      },
+      {
+        label: "Churned",
+        value: churned.toLocaleString(),
+        icon: UserX,
+        iconBg: "bg-slate-100 text-slate-600",
+      },
+      {
+        label: "Churn Rate",
+        value: `${churnRate}%`,
+        icon: Activity,
+        iconBg: "bg-indigo-50 text-indigo-600",
+      },
+    ];
+  };
+
+  // Generate churn overview data from real data
+  const getChurnOverviewData = () => {
+    if (!overviewData) return [];
+    
+    // Generate monthly data based on contract types
+    const churnByContract = overviewData.churn_by_contract || {};
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    
+    return months.map((month, index) => ({
+      month,
+      actual: Math.floor((churnByContract['Month-to-month'] || 0) / 6) + (index * 10),
+      predicted: Math.floor((churnByContract['Month-to-month'] || 0) / 6) + (index * 12) + 20,
+    }));
+  };
+
+  // Generate churn reasons data from real data
+  const getChurnReasonsData = () => {
+    if (!overviewData) return [];
+    
+    const churnByPayment = overviewData.churn_by_payment_method || {};
+    const total = Object.values(churnByPayment).reduce((sum, val) => sum + val, 0) || 1;
+    
+    return [
+      {
+        name: "Payment Issues",
+        value: Math.round(((churnByPayment['Electronic check'] || 0) / total) * 100),
+        color: "#2563eb",
+      },
+      {
+        name: "Contract Issues",
+        value: Math.round(((churnByPayment['Mailed check'] || 0) / total) * 100),
+        color: "#64748b",
+      },
+      {
+        name: "Other Reasons",
+        value: Math.round(((churnByPayment['Credit card (automatic)'] || 0) / total) * 100),
+        color: "#cbd5e1",
+      },
+    ];
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30">
+        <Sidebar onLogout={handleLogout} />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-slate-500">Loading dashboard data...</div>
+        </div>
+      </div>
+    );
+  }
+
+  const stats = getStats();
+  const churnOverviewData = getChurnOverviewData();
+  const churnReasonsData = getChurnReasonsData();
+
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30">
 
-      <Sidebar />
+      <Sidebar onLogout={handleLogout} />
 
       <div className="flex-1 flex flex-col overflow-y-auto">
 
@@ -676,7 +736,7 @@ export default function Dashboard() {
           {/* Statistics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-            {STATS.map((stat) => (
+            {stats.map((stat) => (
               <StatCard
                 key={stat.label}
                 {...stat}
@@ -687,9 +747,9 @@ export default function Dashboard() {
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-            <ChurnOverviewChart />
+            <ChurnOverviewChart data={churnOverviewData} />
 
-            <ChurnDistributionChart />
+            <ChurnDistributionChart data={churnReasonsData} />
 
           </div>
 

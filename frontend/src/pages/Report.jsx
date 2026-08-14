@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -28,6 +28,8 @@ import {
   Headphones,
   RefreshCw,
 } from "lucide-react";
+import { reportApi, uploadApi } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 import {
   LineChart,
@@ -186,7 +188,7 @@ const HIGH_RISK_CUSTOMERS = [
    SIDEBAR
 ========================================================= */
 
-function Sidebar() {
+function Sidebar({ onLogout }) {
   const location = useLocation();
 
   return (
@@ -245,14 +247,14 @@ function Sidebar() {
           Settings
         </a>
 
-        <Link
-          to="/login"
+        <button
+          onClick={onLogout}
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700"
         >
           <LogOut className="h-4 w-4" />
 
           Logout
-        </Link>
+        </button>
       </div>
     </aside>
   );
@@ -758,20 +760,88 @@ function Recommendations() {
 ========================================================= */
 
 export default function Report() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [overviewData, setOverviewData] = useState(null);
+  const [summaryData, setSummaryData] = useState(null);
 
-  const handleExport = () => {
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [overview, summary] = await Promise.all([
+        uploadApi.getOverview(),
+        reportApi.getSummary(),
+      ]);
+      setOverviewData(overview);
+      setSummaryData(summary);
+    } catch (error) {
+      console.error('Failed to fetch report data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const handleExport = async () => {
     setExporting(true);
 
-    setTimeout(() => {
+    try {
+      // Generate CSV from report data
+      const csvContent = generateReportCSV(summaryData, overviewData);
+      
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `churn_report_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
       setExporting(false);
-      console.log("Report export triggered");
-    }, 800);
+    } catch (error) {
+      console.error('Export failed:', error);
+      setExporting(false);
+    }
+  };
+
+  const generateReportCSV = (summary, overview) => {
+    const headers = ['Metric', 'Value', 'Description'];
+    const rows = [
+      ['Total Predictions', summary?.total_predictions || 0, 'Total number of customer predictions'],
+      ['Churn Count', summary?.churn_count || 0, 'Number of customers predicted to churn'],
+      ['No Churn Count', summary?.no_churn_count || 0, 'Number of customers predicted to stay'],
+      ['Average Churn Probability', summary?.average_churn_probability || 0, 'Average probability of churn across all customers'],
+      ['Total Customers', overview?.total_customers || 0, 'Total customers in the dataset'],
+      ['High Risk Customers', overview?.churn_risk?.high || 0, 'Customers with high churn risk (>70%)'],
+      ['Medium Risk Customers', overview?.churn_risk?.medium || 0, 'Customers with medium churn risk (40-70%)'],
+      ['Low Risk Customers', overview?.churn_risk?.low || 0, 'Customers with low churn risk (<40%)'],
+    ];
+
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+      csv += row.join(',') + '\n';
+    });
+
+    return csv;
   };
 
   return (
     <div className="flex h-screen bg-slate-50">
-      <Sidebar />
+      <Sidebar onLogout={handleLogout} />
 
       <div className="flex-1 flex flex-col overflow-y-auto">
         <TopBar />

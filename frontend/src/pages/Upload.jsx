@@ -17,14 +17,18 @@ import {
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { uploadApi } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Upload() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const fileInputRef = useRef(null);
 
   const [files, setFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
 
   const MAX_SIZE = 25 * 1024 * 1024;
 
@@ -103,16 +107,27 @@ export default function Upload() {
     return fileName.split(".").pop()?.toUpperCase();
   };
 
-  const handleRunPredictions = () => {
+  const handleRunPredictions = async () => {
     if (!files.length) {
       setError("Please upload at least one dataset before continuing.");
       return;
     }
 
-    // Backend integration will be connected here later.
-    console.log("Running predictions for:", files);
+    setIsUploading(true);
+    setError("");
 
-    navigate("/report");
+    try {
+      const file = files[0];
+      const response = await uploadApi.uploadCsv(file);
+      
+      if (response) {
+        navigate("/report");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to upload and process the file. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -161,7 +176,10 @@ export default function Upload() {
 
         <div className="px-3 pb-5">
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => {
+              logout();
+              navigate("/login");
+            }}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50"
           >
             Logout
@@ -422,10 +440,10 @@ export default function Upload() {
 
                   <Button
                     onClick={handleRunPredictions}
-                    disabled={!files.length}
+                    disabled={!files.length || isUploading}
                     className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-6 h-10 font-semibold shadow-sm disabled:opacity-50"
                   >
-                    Run Predictions
+                    {isUploading ? "Processing..." : "Run Predictions"}
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>

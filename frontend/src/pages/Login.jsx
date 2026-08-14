@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Lock, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,8 +29,13 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      console.log("Signing in with:", { email, rememberMe });
-      navigate("/dashboard");
+      const result = await login(email, password);
+      
+      if (result.success) {
+        navigate("/dashboard");
+      } else {
+        setError(result.error || "Unable to sign in. Please check your credentials.");
+      }
     } catch (err) {
       setError("Unable to sign in. Please check your credentials.");
     } finally {
