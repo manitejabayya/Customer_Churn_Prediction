@@ -1,1 +1,4 @@
+.env
 .env.example
+churn_ai
+__pycache__

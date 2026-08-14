@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api import auth, predict, report, upload
+from api import auth, report
 from core.config import settings
 from database.connection import Base, engine
 
@@ -19,9 +19,16 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
-app.include_router(predict.router)
-app.include_router(upload.router)
 app.include_router(report.router)
+
+# Keep ML-dependent routes optional so auth/report/db APIs can run independently.
+try:
+    from api import predict, upload
+
+    app.include_router(predict.router)
+    app.include_router(upload.router)
+except Exception as exc:
+    print(f"ML routes disabled during startup: {exc}")
 
 
 @app.get("/")
