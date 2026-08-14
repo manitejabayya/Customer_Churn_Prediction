@@ -1,11 +1,17 @@
 import pandas as pd
 import numpy as np
+import sys
+from pathlib import Path
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_auc_score
 from sklearn.model_selection import cross_val_score
 import xgboost as xgb
 import joblib
 import os
+
+# Add parent directory to path for imports
+sys.path.append(str(Path(__file__).parent))
+
 from preprocessing import DataPreprocessor
 
 

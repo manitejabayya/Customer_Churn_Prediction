@@ -27,6 +27,9 @@ try:
 
     app.include_router(predict.router)
     app.include_router(upload.router)
+    print("ML routes loaded successfully")
+except ImportError as exc:
+    print(f"ML routes disabled during startup: {exc}")
 except Exception as exc:
     print(f"ML routes disabled during startup: {exc}")
 

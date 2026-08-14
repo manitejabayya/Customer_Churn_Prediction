@@ -41,7 +41,13 @@ class DataPreprocessor:
     
     def preprocess_data(self, df, target_column='Churn', fit=True):
         """Complete preprocessing pipeline"""
-        X, y = self.separate_features_target(df, target_column)
+        # Check if target column exists (for training data)
+        if target_column in df.columns:
+            X, y = self.separate_features_target(df, target_column)
+        else:
+            # For prediction data, no target column
+            X = df
+            y = None
         
         if fit:
             self.feature_columns = X.columns.tolist()

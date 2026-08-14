@@ -1,5 +1,11 @@
 import pandas as pd
 import numpy as np
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.append(str(Path(__file__).parent))
+
 from model_loader import ModelLoader
 
 
@@ -13,13 +19,99 @@ class ChurnPredictor:
         self.is_loaded = self.model_loader.load_all()
         return self.is_loaded
     
-    def preprocess_input(self, input_data):
-        """Preprocess input data for prediction"""
-        # Convert input to DataFrame if it's a dictionary
+    def transform_input_to_model_format(self, input_data):
+        """Transform simple input format to one-hot encoded model format"""
         if isinstance(input_data, dict):
             input_data = [input_data]
         
-        df = pd.DataFrame(input_data)
+        transformed_data = []
+        for data in input_data:
+            # Initialize all features with 0
+            feature_dict = {
+                'Partner': 0,
+                'DeviceProtection': 0,
+                'PaymentMethod_Mailed check': 0,
+                'OnlineSecurity': 0,
+                'PaymentMethod_Electronic check': 0,
+                'StreamingTV': 0,
+                'MultipleLines': 0,
+                'Contract_Two year': 0,
+                'InternetService_No': 0,
+                'TechSupport': 0,
+                'PaperlessBilling': 0,
+                'gender': 0,
+                'InternetService_Fiber optic': 0,
+                'PaymentMethod_Credit card (automatic)': 0,
+                'Dependents': 0,
+                'TotalCharges': data.get('total_charges', 0),
+                'MonthlyCharges': data.get('monthly_charges', 0),
+                'StreamingMovies': 0,
+                'OnlineBackup': 0,
+                'Contract_One year': 0,
+                'PhoneService': 0,
+                'SeniorCitizen': data.get('senior_citizen', 0),
+                'tenure': data.get('tenure', 0)
+            }
+            
+            # Transform contract type
+            contract = data.get('contract_type', '').lower()
+            if 'one year' in contract:
+                feature_dict['Contract_One year'] = 1
+            elif 'two year' in contract:
+                feature_dict['Contract_Two year'] = 1
+            
+            # Transform internet service
+            internet = data.get('internet_service', '').lower()
+            if 'fiber optic' in internet:
+                feature_dict['InternetService_Fiber optic'] = 1
+            elif 'no' in internet:
+                feature_dict['InternetService_No'] = 1
+            
+            # Transform payment method
+            payment = data.get('payment_method', '').lower()
+            if 'electronic check' in payment:
+                feature_dict['PaymentMethod_Electronic check'] = 1
+            elif 'mailed check' in payment:
+                feature_dict['PaymentMethod_Mailed check'] = 1
+            elif 'credit card' in payment:
+                feature_dict['PaymentMethod_Credit card (automatic)'] = 1
+            
+            # Transform boolean fields (if provided)
+            if data.get('partner'):
+                feature_dict['Partner'] = 1
+            if data.get('device_protection'):
+                feature_dict['DeviceProtection'] = 1
+            if data.get('online_security'):
+                feature_dict['OnlineSecurity'] = 1
+            if data.get('streaming_tv'):
+                feature_dict['StreamingTV'] = 1
+            if data.get('multiple_lines'):
+                feature_dict['MultipleLines'] = 1
+            if data.get('tech_support'):
+                feature_dict['TechSupport'] = 1
+            if data.get('paperless_billing'):
+                feature_dict['PaperlessBilling'] = 1
+            if data.get('gender') == 'Male':
+                feature_dict['gender'] = 1
+            if data.get('dependents'):
+                feature_dict['Dependents'] = 1
+            if data.get('streaming_movies'):
+                feature_dict['StreamingMovies'] = 1
+            if data.get('online_backup'):
+                feature_dict['OnlineBackup'] = 1
+            if data.get('phone_service'):
+                feature_dict['PhoneService'] = 1
+            
+            transformed_data.append(feature_dict)
+        
+        return transformed_data
+
+    def preprocess_input(self, input_data):
+        """Preprocess input data for prediction"""
+        # Transform input to model format
+        transformed_data = self.transform_input_to_model_format(input_data)
+        
+        df = pd.DataFrame(transformed_data)
         
         # Ensure all required features are present
         required_features = self.model_loader.preprocessor.feature_columns

@@ -13,7 +13,20 @@ class PredictionRequest(BaseModel):
     contract_type: str        # e.g. "Month-to-month", "One year", "Two year"
     internet_service: str      # e.g. "DSL", "Fiber optic", "No"
     payment_method: str
-    # add any other features your trained model expects
+    senior_citizen: int = 0
+    # Optional boolean fields (will default to 0 if not provided)
+    partner: bool = False
+    dependents: bool = False
+    phone_service: bool = False
+    multiple_lines: bool = False
+    online_security: bool = False
+    online_backup: bool = False
+    device_protection: bool = False
+    tech_support: bool = False
+    streaming_tv: bool = False
+    streaming_movies: bool = False
+    paperless_billing: bool = False
+    gender: str = "Female"  # "Male" or "Female"
 
 
 class PredictionResponse(BaseModel):
