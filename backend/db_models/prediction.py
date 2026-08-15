@@ -12,6 +12,7 @@ class Prediction(Base):
     customer_id = Column(String, index=True, nullable=False)
     churn_probability = Column(Float, nullable=False)
     churn_label = Column(String, nullable=False)  # "Churn" / "No Churn"
+    original_data = Column(String, nullable=True)  # Store original customer data as JSON
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     owner_id = Column(Integer, ForeignKey("users.id"))

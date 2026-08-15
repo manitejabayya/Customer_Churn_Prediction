@@ -27,6 +27,8 @@ import {
   CircleDollarSign,
   Headphones,
   RefreshCw,
+  Clock,
+  Wifi,
 } from "lucide-react";
 import { reportApi, uploadApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -445,7 +447,30 @@ function PredictionChart() {
    RISK DISTRIBUTION
 ========================================================= */
 
-function RiskDistribution() {
+function RiskDistribution({ data }) {
+  const riskData = data?.churn_risk || { high: 0, medium: 0, low: 0 };
+  const total = riskData.high + riskData.medium + riskData.low || 1;
+  
+  const chartData = [
+    {
+      name: "High Risk",
+      value: total > 0 ? Math.round((riskData.high / total) * 100) : 0,
+      color: "#2563eb",
+    },
+    {
+      name: "Medium Risk",
+      value: total > 0 ? Math.round((riskData.medium / total) * 100) : 0,
+      color: "#93c5fd",
+    },
+    {
+      name: "Low Risk",
+      value: total > 0 ? Math.round((riskData.low / total) * 100) : 0,
+      color: "#e2e8f0",
+    },
+  ];
+  
+  const highRiskPercentage = total > 0 ? Math.round((riskData.high / total) * 100) : 0;
+
   return (
     <Card className="p-6 rounded-2xl border border-slate-200 shadow-sm bg-white">
       <div className="flex items-center justify-between mb-4">
@@ -466,7 +491,7 @@ function RiskDistribution() {
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={RISK_DATA}
+              data={chartData}
               dataKey="value"
               nameKey="name"
               innerRadius={60}
@@ -476,7 +501,7 @@ function RiskDistribution() {
               paddingAngle={2}
               stroke="none"
             >
-              {RISK_DATA.map((entry) => (
+              {chartData.map((entry) => (
                 <Cell
                   key={entry.name}
                   fill={entry.color}
@@ -490,7 +515,7 @@ function RiskDistribution() {
 
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-2xl font-bold text-slate-900">
-            18%
+            {highRiskPercentage}%
           </span>
 
           <span className="text-[10px] text-slate-400">
@@ -500,7 +525,7 @@ function RiskDistribution() {
       </div>
 
       <div className="space-y-3 mt-2">
-        {RISK_DATA.map((item) => (
+        {chartData.map((item) => (
           <div
             key={item.name}
             className="flex items-center justify-between"
@@ -532,7 +557,18 @@ function RiskDistribution() {
    CHURN DRIVERS
 ========================================================= */
 
-function ChurnDrivers() {
+function ChurnDrivers({ data }) {
+  const drivers = data?.drivers || [];
+  
+  // Icon mapping for driver names
+  const iconMap = {
+    'CircleDollarSign': CircleDollarSign,
+    'Headphones': Headphones,
+    'RefreshCw': RefreshCw,
+    'Clock': Clock,
+    'Wifi': Wifi,
+  };
+
   return (
     <Card className="p-6 rounded-2xl border border-slate-200 shadow-sm bg-white">
       <div className="flex items-center justify-between mb-6">
@@ -550,38 +586,44 @@ function ChurnDrivers() {
       </div>
 
       <div className="space-y-5">
-        {CHURN_DRIVERS.map((driver, index) => {
-          const Icon = driver.icon;
+        {drivers.length > 0 ? (
+          drivers.map((driver) => {
+            const Icon = iconMap[driver.icon] || CircleDollarSign;
+            
+            return (
+              <div key={driver.name}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                      <Icon className="h-4 w-4 text-blue-600" />
+                    </div>
 
-          return (
-            <div key={driver.name}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <Icon className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-slate-700">
+                      {driver.name}
+                    </span>
                   </div>
 
-                  <span className="text-sm font-medium text-slate-700">
-                    {driver.name}
+                  <span className="text-sm font-bold text-slate-900">
+                    {driver.value}%
                   </span>
                 </div>
 
-                <span className="text-sm font-bold text-slate-900">
-                  {driver.value}%
-                </span>
+                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-blue-600"
+                    style={{
+                      width: `${driver.value}%`,
+                    }}
+                  />
+                </div>
               </div>
-
-              <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-blue-600"
-                  style={{
-                    width: `${driver.value}%`,
-                  }}
-                />
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        ) : (
+          <div className="text-center py-8 text-sm text-slate-400">
+            No churn driver data available. Upload customer data to see analysis.
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -591,7 +633,9 @@ function ChurnDrivers() {
    HIGH RISK CUSTOMERS
 ========================================================= */
 
-function HighRiskCustomers() {
+function HighRiskCustomers({ data }) {
+  const customers = data?.customers || [];
+  
   return (
     <Card className="rounded-2xl border border-slate-200 shadow-sm bg-white overflow-hidden">
       <div className="p-6 flex items-center justify-between border-b border-slate-100">
@@ -641,47 +685,59 @@ function HighRiskCustomers() {
           </thead>
 
           <tbody>
-            {HIGH_RISK_CUSTOMERS.map((customer) => (
-              <tr
-                key={customer.id}
-                className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70 transition-colors"
-              >
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
-                      <UsersRound className="h-4 w-4 text-slate-500" />
+            {customers.length > 0 ? (
+              customers.map((customer) => (
+                <tr
+                  key={customer.id}
+                  className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70 transition-colors"
+                >
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                        <UsersRound className="h-4 w-4 text-slate-500" />
+                      </div>
+
+                      <span className="text-sm font-semibold text-slate-800">
+                        {customer.id}
+                      </span>
                     </div>
+                  </td>
 
-                    <span className="text-sm font-semibold text-slate-800">
-                      {customer.id}
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-bold text-slate-900">
+                      {customer.probability}
                     </span>
-                  </div>
-                </td>
+                  </td>
 
-                <td className="px-6 py-4">
-                  <span className="text-sm font-bold text-slate-900">
-                    {customer.probability}
-                  </span>
-                </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold ${
+                      customer.risk === 'High' ? 'bg-red-50 text-red-600' :
+                      customer.risk === 'Medium' ? 'bg-yellow-50 text-yellow-600' :
+                      'bg-green-50 text-green-600'
+                    }`}>
+                      <AlertTriangle className="h-3 w-3" />
+                      {customer.risk}
+                    </span>
+                  </td>
 
-                <td className="px-6 py-4">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-[10px] font-bold">
-                    <AlertTriangle className="h-3 w-3" />
-                    {customer.risk}
-                  </span>
-                </td>
+                  <td className="px-6 py-4 text-xs text-slate-500">
+                    {customer.reason}
+                  </td>
 
-                <td className="px-6 py-4 text-xs text-slate-500">
-                  {customer.reason}
-                </td>
-
-                <td className="px-6 py-4">
-                  <span className="text-xs font-semibold text-blue-600">
-                    {customer.action}
-                  </span>
+                  <td className="px-6 py-4">
+                    <span className="text-xs font-semibold text-blue-600">
+                      {customer.action}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="px-6 py-8 text-center text-sm text-slate-400">
+                  No high-risk customers found. Upload customer data to see predictions.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
@@ -766,6 +822,8 @@ export default function Report() {
   const [loading, setLoading] = useState(true);
   const [overviewData, setOverviewData] = useState(null);
   const [summaryData, setSummaryData] = useState(null);
+  const [highRiskData, setHighRiskData] = useState(null);
+  const [churnDriversData, setChurnDriversData] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -774,12 +832,16 @@ export default function Report() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [overview, summary] = await Promise.all([
+      const [overview, summary, highRisk, churnDrivers] = await Promise.all([
         uploadApi.getOverview(),
         reportApi.getSummary(),
+        reportApi.getHighRiskCustomers(),
+        reportApi.getChurnDrivers(),
       ]);
       setOverviewData(overview);
       setSummaryData(summary);
+      setHighRiskData(highRisk);
+      setChurnDriversData(churnDrivers);
     } catch (error) {
       console.error('Failed to fetch report data:', error);
     } finally {
@@ -898,7 +960,7 @@ export default function Report() {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <SummaryCard
               label="Customers Analyzed"
-              value="25,480"
+              value={overviewData?.total_customers?.toLocaleString() || "0"}
               description="Total records processed"
               icon={UsersRound}
               iconStyle="bg-blue-50 text-blue-600"
@@ -906,32 +968,26 @@ export default function Report() {
 
             <SummaryCard
               label="High Risk"
-              value="4,280"
+              value={overviewData?.churn_risk?.high?.toLocaleString() || "0"}
               description="Customers requiring attention"
               icon={AlertTriangle}
               iconStyle="bg-red-50 text-red-500"
-              trend="+4.2%"
-              trendUp={false}
             />
 
             <SummaryCard
               label="Predicted Churn"
-              value="3,150"
+              value={summaryData?.churn_count?.toLocaleString() || "0"}
               description="Expected customer churn"
               icon={UserX}
               iconStyle="bg-violet-50 text-violet-600"
-              trend="-2.8%"
-              trendUp
             />
 
             <SummaryCard
               label="Overall Churn Rate"
-              value="12.4%"
+              value={`${((summaryData?.average_churn_probability || 0) * 100).toFixed(1)}%`}
               description="Current predicted rate"
               icon={Target}
               iconStyle="bg-emerald-50 text-emerald-600"
-              trend="-1.6%"
-              trendUp
             />
           </div>
 
@@ -942,20 +998,20 @@ export default function Report() {
           <div className="grid grid-cols-1 xl:grid-cols-[1.8fr_1fr] gap-5">
             <PredictionChart />
 
-            <RiskDistribution />
+            <RiskDistribution data={overviewData} />
           </div>
 
           {/* =================================================
               DRIVERS
           ================================================= */}
 
-          <ChurnDrivers />
+          <ChurnDrivers data={churnDriversData} />
 
           {/* =================================================
               HIGH RISK TABLE
           ================================================= */}
 
-          <HighRiskCustomers />
+          <HighRiskCustomers data={highRiskData} />
 
           {/* =================================================
               AI RECOMMENDATIONS

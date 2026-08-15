@@ -79,3 +79,27 @@ class CustomerAnalysis(BaseModel):
     churn_label: str
     churn_reason: str
     recommendations: List[str]
+
+
+class HighRiskCustomer(BaseModel):
+    id: str
+    probability: str
+    risk: str
+    reason: str
+    action: str
+
+
+class HighRiskCustomersResponse(BaseModel):
+    customers: List[HighRiskCustomer]
+    total: int
+
+
+class ChurnDriver(BaseModel):
+    name: str
+    value: int
+    icon: str
+
+
+class ChurnDriversResponse(BaseModel):
+    drivers: List[ChurnDriver]
+    total: int

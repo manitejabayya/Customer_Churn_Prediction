@@ -12,7 +12,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 def load_and_clean_data(file_path: str, target_column: str = "Churn") -> pd.DataFrame:
 	"""Load CSV, normalize missing values, and remove duplicates."""
-	df = pd.read_csv(file_path)
+	df = pd.read_csv(file_path, on_bad_lines="skip")
 	df.columns = [col.strip() for col in df.columns]
 
 	if target_column not in df.columns:

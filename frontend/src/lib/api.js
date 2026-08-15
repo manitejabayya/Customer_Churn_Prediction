@@ -158,4 +158,10 @@ export const reportApi = {
   getSummary: async () => {
     return apiClient.get('/report/summary');
   },
+  getHighRiskCustomers: async () => {
+    return apiClient.get('/report/high-risk');
+  },
+  getChurnDrivers: async () => {
+    return apiClient.get('/report/churn-drivers');
+  },
 };

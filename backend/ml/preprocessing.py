@@ -17,7 +17,7 @@ class DataPreprocessor:
         
     def load_data(self, data_path):
         """Load the dataset from CSV file"""
-        return pd.read_csv(data_path)
+        return pd.read_csv(data_path, on_bad_lines="skip")
     
     def separate_features_target(self, df, target_column='Churn'):
         """Separate features and target variable"""
