@@ -20,87 +20,139 @@ class ChurnPredictor:
         return self.is_loaded
     
     def transform_input_to_model_format(self, input_data):
-        """Transform simple input format to one-hot encoded model format"""
+        """Transform simple input format to one-hot encoded model format for new dataset"""
         if isinstance(input_data, dict):
             input_data = [input_data]
         
         transformed_data = []
         for data in input_data:
-            # Initialize all features with 0
+            # Initialize all features with 0 for new dataset structure
             feature_dict = {
-                'Partner': 0,
-                'DeviceProtection': 0,
-                'PaymentMethod_Mailed check': 0,
-                'OnlineSecurity': 0,
-                'PaymentMethod_Electronic check': 0,
-                'StreamingTV': 0,
-                'MultipleLines': 0,
-                'Contract_Two year': 0,
-                'InternetService_No': 0,
-                'TechSupport': 0,
-                'PaperlessBilling': 0,
-                'gender': 0,
-                'InternetService_Fiber optic': 0,
-                'PaymentMethod_Credit card (automatic)': 0,
-                'Dependents': 0,
-                'TotalCharges': data.get('total_charges', 0),
-                'MonthlyCharges': data.get('monthly_charges', 0),
-                'StreamingMovies': 0,
-                'OnlineBackup': 0,
-                'Contract_One year': 0,
-                'PhoneService': 0,
-                'SeniorCitizen': data.get('senior_citizen', 0),
-                'tenure': data.get('tenure', 0)
+                'Age': data.get('age', 0),
+                'Gender': data.get('gender', 0),
+                'Dependents': data.get('dependents', 0),
+                'Tenure_Months': data.get('tenure_months', 0),
+                'Num_Services': data.get('num_services', 0),
+                'Traveler_Profile': data.get('traveler_profile', 0),
+                'Data_Usage_GB': data.get('data_usage_gb', 0),
+                'Data_Usage_Change_Pct': data.get('data_usage_change_pct', 0),
+                'Call_Minutes': data.get('call_minutes', 0),
+                'Num_Calls': data.get('num_calls', 0),
+                'SMS_Usage': data.get('sms_usage', 0),
+                'Usage_5G_4G_Pct': data.get('usage_5g_4g_pct', 0),
+                'Roaming_Usage_Mins': data.get('roaming_usage_mins', 0),
+                'International_Usage_Mins': data.get('international_usage_mins', 0),
+                'Plan_Price': data.get('plan_price', 0),
+                'Average_Monthly_Bill': data.get('average_monthly_bill', 0),
+                'Current_Monthly_Bill': data.get('current_monthly_bill', 0),
+                'Bill_Change_Pct': data.get('bill_change_pct', 0),
+                'Late_Payments': data.get('late_payments', 0),
+                'Dropped_Calls': data.get('dropped_calls', 0),
+                'Network_Issues': data.get('network_issues', 0),
+                'Downtime_Hours': data.get('downtime_hours', 0),
+                'Complaints': data.get('complaints', 0),
+                'Support_Tickets': data.get('support_tickets', 0),
+                'Complaint_Resolution_Time_Hrs': data.get('complaint_resolution_time_hrs', 0),
+                'Family_Status_Married': 0,
+                'Family_Status_Married with Kids': 0,
+                'Family_Status_Single': 0,
+                'Family_Status_Single Parent': 0,
+                'Location_Rural': 0,
+                'Location_Suburban': 0,
+                'Location_Urban': 0,
+                'Contract_Type_Month-to-month': 0,
+                'Contract_Type_One year': 0,
+                'Contract_Type_Two year': 0,
+                'Payment_Method_Bank transfer (auto)': 0,
+                'Payment_Method_Credit card (auto)': 0,
+                'Payment_Method_Electronic check': 0,
+                'Payment_Method_Mailed check': 0,
+                # Engineered features (will be calculated by preprocessor)
+                'Tenure_bin': 0,
+                'Bill_to_Plan_ratio': 0,
+                'Bill_Change_Indicator': 0,
+                'Data_to_Call_ratio': 0,
+                'High_Service_User': 0,
+                'Has_Late_Payments': 0,
+                'Has_Support_Tickets': 0,
+                'Contract_Type_Sum': 0,
+                'Location_Type_Sum': 0,
+                'Family_Status_Sum': 0,
+                'Auto_Payment_Indicator': 0
             }
+            
+            # Transform family status
+            family_status = data.get('family_status', '').lower()
+            if 'married' in family_status and 'kids' in family_status:
+                feature_dict['Family_Status_Married with Kids'] = 1
+            elif 'married' in family_status:
+                feature_dict['Family_Status_Married'] = 1
+            elif 'single parent' in family_status:
+                feature_dict['Family_Status_Single Parent'] = 1
+            elif 'single' in family_status:
+                feature_dict['Family_Status_Single'] = 1
+            
+            # Transform location
+            location = data.get('location', '').lower()
+            if 'rural' in location:
+                feature_dict['Location_Rural'] = 1
+            elif 'suburban' in location:
+                feature_dict['Location_Suburban'] = 1
+            elif 'urban' in location:
+                feature_dict['Location_Urban'] = 1
             
             # Transform contract type
             contract = data.get('contract_type', '').lower()
-            if 'one year' in contract:
-                feature_dict['Contract_One year'] = 1
+            if 'month-to-month' in contract or 'month to month' in contract:
+                feature_dict['Contract_Type_Month-to-month'] = 1
+            elif 'one year' in contract:
+                feature_dict['Contract_Type_One year'] = 1
             elif 'two year' in contract:
-                feature_dict['Contract_Two year'] = 1
-            
-            # Transform internet service
-            internet = data.get('internet_service', '').lower()
-            if 'fiber optic' in internet:
-                feature_dict['InternetService_Fiber optic'] = 1
-            elif 'no' in internet:
-                feature_dict['InternetService_No'] = 1
+                feature_dict['Contract_Type_Two year'] = 1
             
             # Transform payment method
             payment = data.get('payment_method', '').lower()
-            if 'electronic check' in payment:
-                feature_dict['PaymentMethod_Electronic check'] = 1
+            if 'bank transfer' in payment and 'auto' in payment:
+                feature_dict['Payment_Method_Bank transfer (auto)'] = 1
+            elif 'credit card' in payment and 'auto' in payment:
+                feature_dict['Payment_Method_Credit card (auto)'] = 1
+            elif 'electronic check' in payment:
+                feature_dict['Payment_Method_Electronic check'] = 1
             elif 'mailed check' in payment:
-                feature_dict['PaymentMethod_Mailed check'] = 1
-            elif 'credit card' in payment:
-                feature_dict['PaymentMethod_Credit card (automatic)'] = 1
+                feature_dict['Payment_Method_Mailed check'] = 1
             
-            # Transform boolean fields (if provided)
-            if data.get('partner'):
-                feature_dict['Partner'] = 1
-            if data.get('device_protection'):
-                feature_dict['DeviceProtection'] = 1
-            if data.get('online_security'):
-                feature_dict['OnlineSecurity'] = 1
-            if data.get('streaming_tv'):
-                feature_dict['StreamingTV'] = 1
-            if data.get('multiple_lines'):
-                feature_dict['MultipleLines'] = 1
-            if data.get('tech_support'):
-                feature_dict['TechSupport'] = 1
-            if data.get('paperless_billing'):
-                feature_dict['PaperlessBilling'] = 1
-            if data.get('gender') == 'Male':
-                feature_dict['gender'] = 1
-            if data.get('dependents'):
-                feature_dict['Dependents'] = 1
-            if data.get('streaming_movies'):
-                feature_dict['StreamingMovies'] = 1
-            if data.get('online_backup'):
-                feature_dict['OnlineBackup'] = 1
-            if data.get('phone_service'):
-                feature_dict['PhoneService'] = 1
+            # Calculate some engineered features
+            if feature_dict['Current_Monthly_Bill'] > 0 and feature_dict['Plan_Price'] > 0:
+                feature_dict['Bill_to_Plan_ratio'] = feature_dict['Current_Monthly_Bill'] / feature_dict['Plan_Price']
+            
+            if feature_dict['Data_Usage_GB'] > 0 and feature_dict['Call_Minutes'] > 0:
+                feature_dict['Data_to_Call_ratio'] = feature_dict['Data_Usage_GB'] / feature_dict['Call_Minutes']
+            
+            if feature_dict['Late_Payments'] > 0:
+                feature_dict['Has_Late_Payments'] = 1
+            
+            if feature_dict['Support_Tickets'] > 0:
+                feature_dict['Has_Support_Tickets'] = 1
+            
+            if feature_dict['Num_Services'] > 5:
+                feature_dict['High_Service_User'] = 1
+            
+            # Sum indicators
+            feature_dict['Contract_Type_Sum'] = (feature_dict['Contract_Type_Month-to-month'] + 
+                                                feature_dict['Contract_Type_One year'] + 
+                                                feature_dict['Contract_Type_Two year'])
+            
+            feature_dict['Location_Type_Sum'] = (feature_dict['Location_Rural'] + 
+                                               feature_dict['Location_Suburban'] + 
+                                               feature_dict['Location_Urban'])
+            
+            feature_dict['Family_Status_Sum'] = (feature_dict['Family_Status_Married'] + 
+                                                feature_dict['Family_Status_Married with Kids'] + 
+                                                feature_dict['Family_Status_Single'] + 
+                                                feature_dict['Family_Status_Single Parent'])
+            
+            feature_dict['Auto_Payment_Indicator'] = (feature_dict['Payment_Method_Bank transfer (auto)'] + 
+                                                     feature_dict['Payment_Method_Credit card (auto)'])
             
             transformed_data.append(feature_dict)
         
@@ -131,40 +183,48 @@ class ChurnPredictor:
         return X_processed
     
     def get_churn_reason(self, input_data, probability):
-        """Determine the primary reason for churn based on features"""
+        """Determine the primary reason for churn based on new dataset features"""
         reasons = []
         
         # Check for high monthly charges
-        if input_data.get('MonthlyCharges', 0) > 80:
+        if input_data.get('Current_Monthly_Bill', 0) > 80:
             reasons.append("High monthly charges")
         
         # Check for short tenure
-        if input_data.get('tenure', 0) < 12:
+        if input_data.get('Tenure_Months', 0) < 12:
             reasons.append("Short customer tenure (less than 1 year)")
         
         # Check for month-to-month contract
-        if input_data.get('Contract_One year', 0) == 0 and input_data.get('Contract_Two year', 0) == 0:
+        if input_data.get('Contract_Type_Month-to-month', 0) == 1:
             reasons.append("Month-to-month contract (no long-term commitment)")
         
-        # Check for fiber optic internet
-        if input_data.get('InternetService_Fiber optic', 1) == 1:
-            reasons.append("Fiber optic internet service")
+        # Check for network issues
+        if input_data.get('Network_Issues', 0) > 0:
+            reasons.append("Network connectivity issues")
         
-        # Check for lack of tech support
-        if input_data.get('TechSupport', 0) == 0:
-            reasons.append("No technical support")
+        # Check for dropped calls
+        if input_data.get('Dropped_Calls', 0) > 0:
+            reasons.append("Frequent dropped calls")
+        
+        # Check for complaints
+        if input_data.get('Complaints', 0) > 0:
+            reasons.append("Customer complaints filed")
+        
+        # Check for high bill change percentage
+        if input_data.get('Bill_Change_Pct', 0) > 20:
+            reasons.append("Significant bill increase")
+        
+        # Check for late payments
+        if input_data.get('Late_Payments', 0) > 0:
+            reasons.append("Payment history issues")
+        
+        # Check for downtime
+        if input_data.get('Downtime_Hours', 0) > 0:
+            reasons.append("Service downtime experienced")
         
         # Check for electronic check payment
-        if input_data.get('PaymentMethod_Electronic check', 0) == 1:
+        if input_data.get('Payment_Method_Electronic check', 0) == 1:
             reasons.append("Electronic check payment method")
-        
-        # Check for paperless billing
-        if input_data.get('PaperlessBilling', 0) == 1:
-            reasons.append("Paperless billing")
-        
-        # Check for no online security
-        if input_data.get('OnlineSecurity', 0) == 0:
-            reasons.append("No online security")
         
         if not reasons:
             reasons.append("Multiple factors contributing to churn risk")
@@ -172,43 +232,58 @@ class ChurnPredictor:
         return reasons[0] if reasons else "General churn risk factors"
     
     def get_recommendations(self, input_data, probability):
-        """Generate recommendations to reduce churn risk"""
+        """Generate recommendations to reduce churn risk for new dataset"""
         recommendations = []
         
         # High monthly charges
-        if input_data.get('MonthlyCharges', 0) > 80:
+        if input_data.get('Current_Monthly_Bill', 0) > 80:
             recommendations.append("Offer discount or promotional pricing")
             recommendations.append("Review current plan and suggest cost optimization")
         
         # Short tenure
-        if input_data.get('tenure', 0) < 12:
+        if input_data.get('Tenure_Months', 0) < 12:
             recommendations.append("Offer onboarding support and training")
             recommendations.append("Provide early-bird renewal incentives")
         
         # Month-to-month contract
-        if input_data.get('Contract_One year', 0) == 0 and input_data.get('Contract_Two year', 0) == 0:
+        if input_data.get('Contract_Type_Month-to-month', 0) == 1:
             recommendations.append("Offer incentives for long-term contract")
             recommendations.append("Highlight benefits of annual plans")
         
-        # No tech support
-        if input_data.get('TechSupport', 0) == 0:
-            recommendations.append("Offer free technical support trial")
-            recommendations.append("Proactive customer service outreach")
+        # Network issues
+        if input_data.get('Network_Issues', 0) > 0:
+            recommendations.append("Investigate network connectivity issues")
+            recommendations.append("Offer service credits for downtime")
         
-        # No online security
-        if input_data.get('OnlineSecurity', 0) == 0:
-            recommendations.append("Promote cybersecurity add-ons")
-            recommendations.append("Educate on security benefits")
+        # Dropped calls
+        if input_data.get('Dropped_Calls', 0) > 0:
+            recommendations.append("Review call quality and network coverage")
+            recommendations.append("Provide signal booster if applicable")
         
-        # Fiber optic issues
-        if input_data.get('InternetService_Fiber optic', 1) == 1:
-            recommendations.append("Review service quality and satisfaction")
-            recommendations.append("Offer service upgrade or optimization")
+        # Complaints
+        if input_data.get('Complaints', 0) > 0:
+            recommendations.append("Address outstanding complaints promptly")
+            recommendations.append("Assign customer success representative")
+        
+        # Late payments
+        if input_data.get('Late_Payments', 0) > 0:
+            recommendations.append("Offer flexible payment arrangements")
+            recommendations.append("Provide financial counseling resources")
+        
+        # High bill change
+        if input_data.get('Bill_Change_Pct', 0) > 20:
+            recommendations.append("Explain bill changes clearly")
+            recommendations.append("Offer grandfathered pricing if applicable")
         
         # Electronic check payment
-        if input_data.get('PaymentMethod_Electronic check', 0) == 1:
+        if input_data.get('Payment_Method_Electronic check', 0) == 1:
             recommendations.append("Encourage automatic payment setup")
             recommendations.append("Offer discount for auto-pay enrollment")
+        
+        # Support tickets
+        if input_data.get('Support_Tickets', 0) > 0:
+            recommendations.append("Review support ticket resolution quality")
+            recommendations.append("Provide proactive customer service outreach")
         
         # General recommendations based on probability
         if probability > 0.8:
@@ -269,7 +344,7 @@ class ChurnPredictor:
         return results
     
     def generate_overview_data(self, predictions_data):
-        """Generate overview data for visualization"""
+        """Generate overview data for visualization with new dataset structure"""
         total_customers = len(predictions_data)
         
         # Churn risk distribution
@@ -281,9 +356,9 @@ class ChurnPredictor:
         churn_by_contract = {}
         for p in predictions_data:
             contract = "Month-to-month"
-            if p.get('Contract_One year', 0) == 1:
+            if p.get('Contract_Type_One year', 0) == 1:
                 contract = "One year"
-            elif p.get('Contract_Two year', 0) == 1:
+            elif p.get('Contract_Type_Two year', 0) == 1:
                 contract = "Two year"
             
             if contract not in churn_by_contract:
@@ -291,28 +366,30 @@ class ChurnPredictor:
             if p['prediction'] == 1:
                 churn_by_contract[contract] += 1
         
-        # Churn by internet service
-        churn_by_internet = {}
+        # Churn by location
+        churn_by_location = {}
         for p in predictions_data:
-            internet = "DSL"
-            if p.get('InternetService_Fiber optic', 0) == 1:
-                internet = "Fiber optic"
-            elif p.get('InternetService_No', 0) == 1:
-                internet = "No"
+            location = "Urban"
+            if p.get('Location_Rural', 0) == 1:
+                location = "Rural"
+            elif p.get('Location_Suburban', 0) == 1:
+                location = "Suburban"
             
-            if internet not in churn_by_internet:
-                churn_by_internet[internet] = 0
+            if location not in churn_by_location:
+                churn_by_location[location] = 0
             if p['prediction'] == 1:
-                churn_by_internet[internet] += 1
+                churn_by_location[location] += 1
         
         # Churn by payment method
         churn_by_payment = {}
         for p in predictions_data:
-            payment = "Mailed check"
-            if p.get('PaymentMethod_Electronic check', 0) == 1:
-                payment = "Electronic check"
-            elif p.get('PaymentMethod_Credit card (automatic)', 0) == 1:
-                payment = "Credit card (automatic)"
+            payment = "Electronic check"
+            if p.get('Payment_Method_Bank transfer (auto)', 0) == 1:
+                payment = "Bank transfer (auto)"
+            elif p.get('Payment_Method_Credit card (auto)', 0) == 1:
+                payment = "Credit card (auto)"
+            elif p.get('Payment_Method_Mailed check', 0) == 1:
+                payment = "Mailed check"
             
             if payment not in churn_by_payment:
                 churn_by_payment[payment] = 0
@@ -320,14 +397,14 @@ class ChurnPredictor:
                 churn_by_payment[payment] += 1
         
         # Average tenure by churn status
-        churn_tenures = [p.get('tenure', 0) for p in predictions_data if p['prediction'] == 1]
-        no_churn_tenures = [p.get('tenure', 0) for p in predictions_data if p['prediction'] == 0]
+        churn_tenures = [p.get('Tenure_Months', 0) for p in predictions_data if p['prediction'] == 1]
+        no_churn_tenures = [p.get('Tenure_Months', 0) for p in predictions_data if p['prediction'] == 0]
         
         avg_tenure_churn = sum(churn_tenures) / len(churn_tenures) if churn_tenures else 0
         avg_tenure_no_churn = sum(no_churn_tenures) / len(no_churn_tenures) if no_churn_tenures else 0
         
         # Monthly charges distribution
-        monthly_charges = [p.get('MonthlyCharges', 0) for p in predictions_data]
+        monthly_charges = [p.get('Current_Monthly_Bill', 0) for p in predictions_data]
         charges_dist = {
             'min': min(monthly_charges) if monthly_charges else 0,
             'max': max(monthly_charges) if monthly_charges else 0,
@@ -342,7 +419,7 @@ class ChurnPredictor:
                 'low': low_risk
             },
             'churn_by_contract': churn_by_contract,
-            'churn_by_internet_service': churn_by_internet,
+            'churn_by_location': churn_by_location,
             'churn_by_payment_method': churn_by_payment,
             'average_tenure_churn': avg_tenure_churn,
             'average_tenure_no_churn': avg_tenure_no_churn,

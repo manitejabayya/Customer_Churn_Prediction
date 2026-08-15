@@ -20,7 +20,7 @@ class ModelLoader:
         
     def load_preprocessor(self):
         """Load the preprocessor objects"""
-        preprocessor_path = os.path.join(self.models_dir, 'preprocessor.pkl')
+        preprocessor_path = os.path.join(self.models_dir, 'preprocessing_pipeline.pkl')
         if os.path.exists(preprocessor_path):
             self.preprocessor.load_preprocessor(preprocessor_path)
             print("Preprocessor loaded successfully")
@@ -31,7 +31,7 @@ class ModelLoader:
     
     def load_best_model(self):
         """Load the best performing model"""
-        model_path = os.path.join(self.models_dir, 'best_model.pkl')
+        model_path = os.path.join(self.models_dir, 'best_churn_model.pkl')
         metadata_path = os.path.join(self.models_dir, 'model_metadata.pkl')
         
         if os.path.exists(model_path):

@@ -3,12 +3,14 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
+from sklearn.compose import ColumnTransformer
 import joblib
 import os
 
 
 class DataPreprocessor:
     def __init__(self):
+        self.preprocessor = None  # ColumnTransformer for new pipeline
         self.scaler = StandardScaler()
         self.imputer = SimpleImputer(strategy='mean')
         self.feature_columns = None
@@ -52,10 +54,18 @@ class DataPreprocessor:
         if fit:
             self.feature_columns = X.columns.tolist()
         
-        X_imputed = self.handle_missing_values(X, fit=fit)
-        X_scaled = self.scale_features(X_imputed, fit=fit)
-        
-        return X_scaled, y
+        # Use the new ColumnTransformer if available
+        if self.preprocessor is not None:
+            if fit:
+                X_processed = self.preprocessor.fit_transform(X)
+            else:
+                X_processed = self.preprocessor.transform(X)
+            return pd.DataFrame(X_processed, columns=self.feature_columns), y
+        else:
+            # Fallback to old preprocessing
+            X_imputed = self.handle_missing_values(X, fit=fit)
+            X_scaled = self.scale_features(X_imputed, fit=fit)
+            return X_scaled, y
     
     def split_data(self, X, y, test_size=0.2, random_state=42):
         """Split data into train and test sets"""
@@ -67,12 +77,26 @@ class DataPreprocessor:
         joblib.dump({
             'scaler': self.scaler,
             'imputer': self.imputer,
-            'feature_columns': self.feature_columns
+            'feature_columns': self.feature_columns,
+            'preprocessor': self.preprocessor
         }, save_path)
     
     def load_preprocessor(self, load_path):
         """Load the preprocessor objects"""
         preprocessor_data = joblib.load(load_path)
-        self.scaler = preprocessor_data['scaler']
-        self.imputer = preprocessor_data['imputer']
-        self.feature_columns = preprocessor_data['feature_columns']
+        
+        # Handle new ColumnTransformer format
+        if isinstance(preprocessor_data, ColumnTransformer):
+            self.preprocessor = preprocessor_data
+            # Extract feature columns from the preprocessor
+            self.feature_columns = preprocessor_data.transformers_[0][2]  # Numerical features
+        elif isinstance(preprocessor_data, dict):
+            self.scaler = preprocessor_data.get('scaler', self.scaler)
+            self.imputer = preprocessor_data.get('imputer', self.imputer)
+            self.feature_columns = preprocessor_data.get('feature_columns')
+            self.preprocessor = preprocessor_data.get('preprocessor')
+        else:
+            # Assume it's the old format
+            self.scaler = preprocessor_data['scaler']
+            self.imputer = preprocessor_data['imputer']
+            self.feature_columns = preprocessor_data['feature_columns']
